@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Exchange</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0d1117;color:#e1e4e8;min-height:100vh}
+
+  /* ---- Header ---- */
+  .header{position:sticky;top:0;z-index:100;background:#161b22;border-bottom:1px solid #30363d;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px}
+  .header .logo{display:flex;align-items:center;gap:10px}
+  .header .logo svg{width:28px;height:28px;fill:#58a6ff}
+  .header .logo span{font-size:1.15rem;font-weight:700;color:#e1e4e8;letter-spacing:-.3px}
+  .header .logo small{font-size:.72rem;color:#8b949e;font-weight:400;margin-left:2px}
+
+  /* Burger button */
+  .burger{background:none;border:1px solid #30363d;border-radius:8px;padding:6px 8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:background .15s}
+  .burger:hover{background:#21262d}
+  .burger span{display:block;width:20px;height:2px;background:#e1e4e8;border-radius:2px;transition:all .2s}
+  .burger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
+  .burger.open span:nth-child(2){opacity:0}
+  .burger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px)}
+
+  /* Slide-out panel */
+  .panel-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200}
+  .panel-overlay.open{display:block}
+  .side-panel{position:fixed;top:0;right:-380px;width:360px;max-width:85vw;height:100vh;background:#161b22;border-left:1px solid #30363d;z-index:300;transition:right .25s ease;display:flex;flex-direction:column;overflow:hidden}
+  .side-panel.open{right:0}
+  .panel-header{padding:20px 20px 16px;border-bottom:1px solid #30363d;display:flex;justify-content:space-between;align-items:center}
+  .panel-header h3{font-size:1.05rem;color:#e1e4e8}
+  .panel-close{background:none;border:none;color:#8b949e;font-size:1.4rem;cursor:pointer;padding:4px 8px;border-radius:6px}
+  .panel-close:hover{color:#e1e4e8;background:#21262d}
+
+  /* Profile section in panel */
+  .profile-section{padding:20px;border-bottom:1px solid #21262d}
+  .profile-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#238636,#1f6feb);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:12px;text-transform:uppercase}
+  .profile-name{font-size:1.1rem;font-weight:600;color:#e1e4e8;margin-bottom:4px}
+  .profile-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;background:#238636;color:#fff;margin-bottom:14px}
+  .profile-stats{display:flex;gap:16px}
+  .profile-stat{text-align:center}
+  .profile-stat .num{font-size:1.1rem;font-weight:700;color:#58a6ff}
+  .profile-stat .lbl{font-size:.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+
+  /* Activity section in panel */
+  .panel-activity{flex:1;overflow:hidden;display:flex;flex-direction:column}
+  .panel-activity-header{padding:16px 20px 10px;font-size:.85rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+  .panel-activity-list{flex:1;overflow-y:auto;padding:0 20px 20px}
+  .activity-item{padding:10px 12px;margin-bottom:6px;background:#0d1117;border-radius:8px;font-size:.82rem;color:#8b949e;border-left:3px solid #30363d}
+  .activity-item.activity-match{border-left-color:#238636;color:#3fb950}
+  .activity-empty{padding:20px;text-align:center;color:#484f58;font-style:italic;font-size:.85rem}
+
+  /* Panel footer */
+  .panel-footer{padding:16px 20px;border-top:1px solid #30363d}
+  .btn-logout{width:100%;padding:10px;border:1px solid #da363366;background:#da363322;color:#f85149;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn-logout:hover{background:#da363355}
+
+  /* ---- Main content ---- */
+  .main{max-width:1000px;margin:0 auto;padding:24px 20px}
+
+  /* Auth screens */
+  .auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh}
+  .auth-box{background:#161b22;border:1px solid #30363d;border-radius:16px;padding:36px;width:100%;max-width:400px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+  .auth-box h2{font-size:1.3rem;color:#e1e4e8;margin-bottom:6px}
+  .auth-box .auth-sub{color:#8b949e;margin-bottom:22px;font-size:.88rem}
+  .auth-box input{width:100%;padding:11px 14px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e1e4e8;font-size:.95rem;margin-bottom:14px;outline:none;transition:border .15s}
+  .auth-box input:focus{border-color:#58a6ff;box-shadow:0 0 0 3px #58a6ff22}
+  .auth-box .error-msg{color:#f85149;font-size:.83rem;margin-bottom:12px;display:none;background:#da363318;padding:8px 12px;border-radius:6px}
+  .auth-box .success-msg{color:#3fb950;font-size:.83rem;margin-bottom:12px;display:none;background:#23863618;padding:8px 12px;border-radius:6px}
+  .auth-link{color:#58a6ff;cursor:pointer;font-size:.88rem;margin-top:16px;display:inline-block}
+  .auth-link:hover{text-decoration:underline}
+
+  /* Buttons */
+  .btn{padding:11px 22px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn-primary{background:#238636;color:#fff;width:100%}
+  .btn-primary:hover{background:#2ea043}
+  .btn-secondary{background:#1f6feb;color:#fff;width:100%}
+  .btn-secondary:hover{background:#388bfd}
+  .btn-buy{background:#238636;color:#fff;padding:11px 24px}
+  .btn-buy:hover{background:#2ea043}
+  .btn-sell{background:#da3633;color:#fff;padding:11px 24px}
+  .btn-sell:hover{background:#f85149}
+  .btn-cancel-order{background:transparent;color:#8b949e;border:1px solid #30363d;padding:5px 12px;font-size:.78rem;border-radius:6px;cursor:pointer;font-weight:500;transition:all .15s}
+  .btn-cancel-order:hover{background:#21262d;color:#f85149;border-color:#da363366}
+  .btn-trade{background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;padding:5px 14px;font-size:.78rem;border-radius:6px;cursor:pointer;font-weight:600;transition:all .15s;letter-spacing:.3px}
+  .btn-trade:hover{background:linear-gradient(135deg,#388bfd,#79c0ff);box-shadow:0 2px 8px rgba(31,111,235,.35)}
+
+  /* Main screen */
+  #main-screen{display:none}
+
+  /* Order form */
+  .order-form{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:24px;margin-bottom:24px}
+  .order-form h3{font-size:1.05rem;color:#e1e4e8;margin-bottom:16px;font-weight:600}
+  .form-row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+  .form-group{display:flex;flex-direction:column;flex:1;min-width:140px}
+  .form-group label{font-size:.72rem;color:#8b949e;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .form-group input{padding:10px 14px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e1e4e8;font-size:.95rem;outline:none;transition:border .15s}
+  .form-group input:focus{border-color:#58a6ff;box-shadow:0 0 0 3px #58a6ff22}
+  .form-actions{display:flex;gap:8px;align-items:end;padding-top:20px}
+
+  /* Order book */
+  .book-section h2{font-size:1.05rem;color:#e1e4e8;margin-bottom:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .book-section h2 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .book-section h2 .dot.live{background:#3fb950;box-shadow:0 0 6px #3fb950}
+  .book{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
+  @media(max-width:640px){.book{grid-template-columns:1fr}}
+  .book-side{background:#161b22;border:1px solid #30363d;border-radius:14px;overflow:hidden}
+  .book-header{padding:14px 18px;font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:8px}
+  .book-header.buy{background:linear-gradient(135deg,#238636,#1a6e2e);color:#fff}
+  .book-header.sell{background:linear-gradient(135deg,#da3633,#b52c29);color:#fff}
+  .book-header svg{width:16px;height:16px;fill:currentColor}
+  .book-table{width:100%;border-collapse:collapse}
+  .book-table th{text-align:left;padding:10px 18px;font-size:.7rem;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #30363d;font-weight:600}
+  .book-table td{padding:12px 18px;font-size:.88rem;border-bottom:1px solid #21262d}
+  .book-table tr:last-child td{border-bottom:none}
+  .book-table tr:hover td{background:#21262d}
+  .book-table .price-buy{color:#3fb950;font-weight:700;font-variant-numeric:tabular-nums}
+  .book-table .price-sell{color:#f85149;font-weight:700;font-variant-numeric:tabular-nums}
+  .book-table .user-cell{color:#8b949e;font-size:.8rem}
+  .book-table .user-cell .user-tag{display:inline-flex;align-items:center;gap:4px;background:#21262d;padding:2px 8px;border-radius:12px;font-size:.75rem}
+  .book-table .user-cell .user-tag.me{background:#1f6feb33;color:#58a6ff}
+  .empty-msg{padding:28px 18px;color:#484f58;text-align:center;font-style:italic;font-size:.85rem}
+
+  /* Grouped game sections */
+  .game-group{border-bottom:1px solid #21262d}
+  .game-group:last-child{border-bottom:none}
+  .game-group-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;transition:background .15s;user-select:none}
+  .game-group-header:hover{background:#21262d}
+  .game-group-header .game-title{font-size:.92rem;font-weight:600;color:#e1e4e8;display:flex;align-items:center;gap:8px}
+  .game-group-header .game-title .count-badge{font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:12px;background:#30363d;color:#8b949e}
+  .game-group-header .game-meta{display:flex;align-items:center;gap:10px;font-size:.8rem;color:#8b949e}
+  .game-group-header .best-price-buy{color:#3fb950;font-weight:700}
+  .game-group-header .best-price-sell{color:#f85149;font-weight:700}
+  .game-group-header .chevron{transition:transform .2s;font-size:.75rem;color:#484f58}
+  .game-group-header .chevron.open{transform:rotate(90deg)}
+  .game-group-listings{display:none;padding:0 18px 12px}
+  .game-group-listings.open{display:block}
+  .listing-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin-bottom:4px;background:#0d1117;border-radius:8px;font-size:.85rem}
+  .listing-row .listing-price{font-weight:700;font-variant-numeric:tabular-nums}
+  .listing-row .listing-price.buy{color:#3fb950}
+  .listing-row .listing-price.sell{color:#f85149}
+  .listing-row .listing-owner{font-size:.78rem;color:#8b949e}
+  .listing-row .listing-owner .me{color:#58a6ff}
+  .listing-row .listing-actions{display:flex;gap:6px}
+
+  /* Best-deal shimmer button */
+  .btn-deal{position:relative;background:linear-gradient(135deg,#238636,#2ea043);color:#fff;border:none;padding:5px 14px;font-size:.78rem;border-radius:6px;cursor:pointer;font-weight:600;transition:all .15s;letter-spacing:.3px;overflow:visible;animation:shimmer 2s infinite}
+  .btn-deal:hover{background:linear-gradient(135deg,#2ea043,#3fb950);box-shadow:0 2px 12px rgba(35,134,54,.5)}
+  @keyframes shimmer{0%{box-shadow:0 0 4px rgba(63,185,80,.3)}50%{box-shadow:0 0 14px rgba(63,185,80,.7),0 0 24px rgba(63,185,80,.3)}100%{box-shadow:0 0 4px rgba(63,185,80,.3)}}
+  .btn-deal .star{position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:#f0c000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1;color:#000;box-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none}
+
+  /* Deal notification toast */
+  .toast-deal{background:rgba(35,134,54,.15);color:#3fb950;border:1px solid #23863666}
+
+  /* Notifications */
+  .notifications{position:fixed;top:68px;right:20px;z-index:150;width:340px;max-width:calc(100vw - 40px)}
+  .toast{padding:14px 18px;border-radius:10px;margin-bottom:8px;font-size:.88rem;animation:slideIn .3s ease;backdrop-filter:blur(8px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+  .toast-match{background:rgba(35,134,54,.9);color:#fff;border:1px solid #2ea043}
+  .toast-info{background:rgba(31,111,235,.15);color:#58a6ff;border:1px solid #1f6feb66}
+  .toast-error{background:rgba(218,54,51,.15);color:#f85149;border:1px solid #da363366}
+  @keyframes slideIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+
+  /* Confirm modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:400;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal-box{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:28px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:modalPop .2s ease}
+  .modal-box h3{font-size:1.1rem;color:#e1e4e8;margin-bottom:8px}
+  .modal-box p{color:#8b949e;font-size:.9rem;margin-bottom:6px}
+  .modal-detail{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin:14px 0 20px;text-align:left;font-size:.88rem;color:#e1e4e8;display:flex;flex-direction:column;gap:4px}
+  .modal-detail span{color:#8b949e;font-size:.78rem}
+  .modal-actions{display:flex;gap:10px;justify-content:center}
+  .modal-actions .btn-yes{padding:10px 28px;border:none;border-radius:8px;font-size:.92rem;font-weight:600;cursor:pointer;background:#da3633;color:#fff;transition:background .15s}
+  .modal-actions .btn-yes:hover{background:#f85149}
+  .modal-actions .btn-no{padding:10px 28px;border:1px solid #30363d;border-radius:8px;font-size:.92rem;font-weight:600;cursor:pointer;background:#21262d;color:#e1e4e8;transition:background .15s}
+  .modal-actions .btn-no:hover{background:#30363d}
+  @keyframes modalPop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- ---- HEADER ---- -->
+<div class="header" id="app-header">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M21 6H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-1 10H4V8h16v8zM6 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm3-2a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm0 4a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm3-2a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm4 0h2v1h-2v-1z"/></svg>
+    <span>Game Exchange<small>&nbsp;LIVE</small></span>
+  </div>
+  <button class="burger" id="burger-btn" style="display:none" onclick="togglePanel()">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+
+<!-- ---- SLIDE-OUT PANEL ---- -->
+<div class="panel-overlay" id="panel-overlay" onclick="togglePanel()"></div>
+<div class="side-panel" id="side-panel">
+  <div class="panel-header">
+    <h3>Profile</h3>
+    <button class="panel-close" onclick="togglePanel()">&times;</button>
+  </div>
+  <div class="profile-section">
+    <div class="profile-avatar" id="profile-avatar"></div>
+    <div class="profile-name" id="profile-name"></div>
+    <div class="profile-badge">Active Trader</div>
+    <div class="profile-stats">
+      <div class="profile-stat"><div class="num" id="stat-orders">0</div><div class="lbl">Orders</div></div>
+      <div class="profile-stat"><div class="num" id="stat-matches">0</div><div class="lbl">Matches</div></div>
+      <div class="profile-stat"><div class="num" id="stat-cancels">0</div><div class="lbl">Cancels</div></div>
+      <div class="profile-stat"><div class="num" id="stat-views">0</div><div class="lbl">Views</div></div>
+    </div>
+  </div>
+  <div class="panel-activity">
+    <div class="panel-activity-header">Session Activity</div>
+    <div class="panel-activity-list" id="activity-list">
+      <p class="activity-empty">No activity yet</p>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn-logout" onclick="logout()" style="margin-bottom:8px">Sign Out</button>
+    <button class="btn-logout" onclick="showDeleteAccount()" style="background:#da363311;border-color:#f8514944;color:#f85149">Delete Account</button>
+  </div>
+</div>
+
+<!-- ---- NOTIFICATIONS ---- -->
+<div class="notifications" id="notifications"></div>
+
+<!-- ---- DELETE ACCOUNT MODAL ---- -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal-box">
+    <h3 style="color:#f85149">Delete Account</h3>
+    <p>This action is <strong>permanent</strong> and cannot be undone. All your orders will be removed.</p>
+    <div style="margin:16px 0">
+      <input type="password" id="delete-password" placeholder="Enter your password to confirm" style="width:100%;padding:10px 14px;border:1px solid #30363d;border-radius:8px;background:#0d1117;color:#e1e4e8;font-size:.92rem;outline:none">
+      <div id="delete-error" style="color:#f85149;font-size:.82rem;margin-top:8px;display:none"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-no" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn-yes" onclick="confirmDeleteAccount()">Delete My Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---- CONFIRM MODAL ---- -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <h3>Cancel Order?</h3>
+    <p>Are you sure you want to remove this order?</p>
+    <div class="modal-detail" id="confirm-detail"></div>
+    <div class="modal-actions">
+      <button class="btn-no" onclick="closeConfirm()">No</button>
+      <button class="btn-yes" id="confirm-yes-btn">Yes, Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ---- MAIN ---- -->
+<div class="main">
+
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen" class="auth-screen">
+    <div class="auth-box">
+      <h2>Welcome back</h2>
+      <p class="auth-sub">Sign in to start trading games</p>
+      <div class="error-msg" id="login-error"></div>
+      <input type="text" id="login-user" placeholder="Username" maxlength="30" autofocus>
+      <input type="password" id="login-pass" placeholder="Password" maxlength="50">
+      <button class="btn btn-primary" onclick="login()">Sign In</button>
+      <span class="auth-link" onclick="showSignup()">Don't have an account? Sign up</span>
+    </div>
+  </div>
+
+  <!-- SIGNUP SCREEN -->
+  <div id="signup-screen" class="auth-screen" style="display:none">
+    <div class="auth-box">
+      <h2>Create account</h2>
+      <p class="auth-sub">Join the game exchange community</p>
+      <div class="error-msg" id="signup-error"></div>
+      <div class="success-msg" id="signup-success"></div>
+      <input type="text" id="signup-user" placeholder="Username (min 3 characters)" maxlength="30">
+      <input type="password" id="signup-pass" placeholder="Password (min 4 characters)" maxlength="50">
+      <input type="password" id="signup-pass2" placeholder="Confirm password" maxlength="50">
+      <button class="btn btn-secondary" onclick="signup()">Create Account</button>
+      <span class="auth-link" onclick="showLogin()">Already have an account? Sign in</span>
+    </div>
+  </div>
+
+  <!-- MAIN SCREEN -->
+  <div id="main-screen">
+
+    <!-- Order form -->
+    <div class="order-form">
+      <h3>Place an Order</h3>
+      <div class="form-row">
+        <div class="form-group" style="flex:2">
+          <label>Game Title</label>
+          <input type="text" id="order-title" placeholder="e.g Path of Exile">
+        </div>
+        <div class="form-group" style="max-width:130px">
+          <label>Price (&euro;)</label>
+          <input type="number" id="order-price" placeholder="29.99" min="0.01" step="0.01">
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-buy" onclick="placeOrder('B')">Buy</button>
+          <button class="btn btn-sell" onclick="placeOrder('S')">Sell</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Book -->
+    <div class="book-section">
+      <h2><span class="dot live"></span> Order Book</h2>
+    </div>
+    <div class="book">
+      <div class="book-side">
+        <div class="book-header buy">
+          <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg>
+          Buy Orders
+        </div>
+        <div id="buy-body"><p class="empty-msg">No buy orders yet</p></div>
+      </div>
+      <div class="book-side">
+        <div class="book-header sell">
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+          Sell Orders
+        </div>
+        <div id="sell-body"><p class="empty-msg">No sell orders yet</p></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let sessionId = null;
+let username = null;
+let evtSource = null;
+let statsOrders = 0, statsMatches = 0, statsCancels = 0, statsViews = 0;
+let pendingCancel = null;
+
+// ---- Panel ----
+function togglePanel() {
+  const panel = document.getElementById('side-panel');
+  const overlay = document.getElementById('panel-overlay');
+  const btn = document.getElementById('burger-btn');
+  const open = panel.classList.toggle('open');
+  overlay.classList.toggle('open', open);
+  btn.classList.toggle('open', open);
+}
+
+// ---- Screen switching ----
+function showLogin() {
+  document.getElementById('signup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  clearAuthErrors();
+}
+function showSignup() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('signup-screen').style.display = 'flex';
+  clearAuthErrors();
+}
+function clearAuthErrors() {
+  ['login-error','signup-error','signup-success'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.display = 'none';
+    el.textContent = '';
+  });
+}
+
+// ---- Enter key support ----
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pass').focus(); });
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+document.getElementById('signup-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('signup-pass').focus(); });
+document.getElementById('signup-pass').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('signup-pass2').focus(); });
+document.getElementById('signup-pass2').addEventListener('keydown', e => { if (e.key === 'Enter') signup(); });
+
+// ---- API helper ----
+async function post(url, data) {
+  const body = Object.entries(data).map(([k,v]) => encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+  const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  return res.json();
+}
+
+// ---- Auth ----
+async function signup() {
+  clearAuthErrors();
+  const user = document.getElementById('signup-user').value.trim();
+  const pass = document.getElementById('signup-pass').value;
+  const pass2 = document.getElementById('signup-pass2').value;
+  if (!user || !pass) { showError('signup-error', 'All fields are required'); return; }
+  if (pass !== pass2) { showError('signup-error', 'Passwords do not match'); return; }
+  try {
+    const data = await post('/api/signup', {username: user, password: pass});
+    if (data.error) { showError('signup-error', data.error); return; }
+    const el = document.getElementById('signup-success');
+    el.textContent = 'Account created! You can now sign in.';
+    el.style.display = 'block';
+    document.getElementById('signup-user').value = '';
+    document.getElementById('signup-pass').value = '';
+    document.getElementById('signup-pass2').value = '';
+    setTimeout(() => showLogin(), 1500);
+  } catch(e) { showError('signup-error', 'Cannot connect to server'); }
+}
+
+async function login() {
+  clearAuthErrors();
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!user || !pass) { showError('login-error', 'Enter username and password'); return; }
+  try {
+    const data = await post('/api/login', {username: user, password: pass});
+    if (data.error) { showError('login-error', data.error); return; }
+    sessionId = data.sessionId;
+    username = data.username;
+    statsOrders = 0; statsMatches = 0; statsCancels = 0; statsViews = 0;
+    // Setup UI
+    document.getElementById('profile-avatar').textContent = username.charAt(0);
+    document.getElementById('profile-name').textContent = username;
+    document.getElementById('burger-btn').style.display = 'flex';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-screen').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    updateStats();
+    startSSE();
+    refreshBook();
+    refreshActivity();
+  } catch(e) { showError('login-error', 'Cannot connect to server'); }
+}
+
+async function logout() {
+  if (evtSource) evtSource.close();
+  try { await post('/api/logout', {sessionId}); } catch(e) {}
+  sessionId = null; username = null;
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('burger-btn').style.display = 'none';
+  document.getElementById('notifications').innerHTML = '';
+  document.getElementById('activity-list').innerHTML = '<p class="activity-empty">No activity yet</p>';
+  // close panel if open
+  document.getElementById('side-panel').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.getElementById('burger-btn').classList.remove('open');
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function updateStats() {
+  document.getElementById('stat-orders').textContent = statsOrders;
+  document.getElementById('stat-matches').textContent = statsMatches;
+  document.getElementById('stat-cancels').textContent = statsCancels;
+  document.getElementById('stat-views').textContent = statsViews;
+}
+
+// ---- SSE ----
+function startSSE() {
+  if (evtSource) evtSource.close();
+  evtSource = new EventSource('/api/events?sessionId=' + encodeURIComponent(sessionId));
+  evtSource.addEventListener('match', e => {
+    const m = JSON.parse(e.data);
+    const side = m.side === 'B' ? 'Bought' : 'Sold';
+    notify('match', side + ' <strong>' + esc(m.title) + '</strong> at &euro;' + esc(m.price));
+    statsMatches++;
+    updateStats();
+    refreshActivity();
+  });
+  evtSource.addEventListener('bookUpdate', e => {
+    const book = JSON.parse(e.data);
+    renderBook(book);
+    refreshActivity();
+  });
+}
+
+// ---- Trading ----
+function fillTrade(side, title, price) {
+  document.getElementById('order-title').value = title;
+  document.getElementById('order-price').value = price;
+  document.getElementById('order-title').scrollIntoView({behavior:'smooth', block:'center'});
+  document.getElementById('order-title').focus();
+  // Auto-submit the order immediately for a 1-click trade
+  placeOrder(side);
+}
+
+async function placeOrder(side) {
+  const title = document.getElementById('order-title').value.trim();
+  const price = document.getElementById('order-price').value.trim();
+  if (!title) { notify('error','Enter a game title'); return; }
+  if (!price || isNaN(price) || parseFloat(price) <= 0) { notify('error','Enter a valid price'); return; }
+  try {
+    const data = await post('/api/order', {sessionId, side, title, price});
+    if (data.error) { notify('error', esc(data.error)); return; }
+    if (data.status === 'matched') {
+      const sideLabel = side === 'B' ? 'Bought' : 'Sold';
+      notify('match', sideLabel + ' <strong>' + esc(data.title) + '</strong> at &euro;' + esc(data.price));
+      statsMatches++;
+    } else {
+      notify('info', (side === 'B' ? 'Buy' : 'Sell') + ' order placed for <strong>' + esc(title) + '</strong>');
+    }
+    statsOrders++;
+    updateStats();
+    if (data.book) renderBook(data.book);
+    document.getElementById('order-title').value = '';
+    document.getElementById('order-price').value = '';
+    refreshActivity();
+  } catch(e) { notify('error','Failed to place order'); }
+}
+
+function cancelOrder(side, title, price) {
+  pendingCancel = {side, title, price};
+  const sideLabel = side === 'B' ? 'Buy' : 'Sell';
+  document.getElementById('confirm-detail').innerHTML =
+    '<span>Type</span><strong>' + esc(sideLabel) + '</strong>' +
+    '<span>Game</span><strong>' + esc(title) + '</strong>' +
+    '<span>Price</span><strong>&euro;' + esc(price) + '</strong>';
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  pendingCancel = null;
+}
+
+// Close modal on Escape key or clicking overlay
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeConfirm(); closeDeleteModal(); } });
+document.getElementById('confirm-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeConfirm(); });
+
+document.getElementById('confirm-yes-btn').addEventListener('click', async () => {
+  if (!pendingCancel) return;
+  const {side, title, price} = pendingCancel;
+  closeConfirm();
+  try {
+    const data = await post('/api/cancel', {sessionId, side, title, price});
+    if (data.error) { notify('error', esc(data.error)); return; }
+    if (data.cancelled) { notify('info', 'Order cancelled'); statsCancels++; updateStats(); }
+    else notify('error', 'Order not found');
+    if (data.book) renderBook(data.book);
+    refreshActivity();
+  } catch(e) { notify('error','Failed to cancel'); }
+});
+
+async function refreshBook() {
+  try {
+    const res = await fetch('/api/book');
+    const data = await res.json();
+    renderBook(data);
+    statsViews++;
+    updateStats();
+    if (sessionId) post('/api/view', {sessionId}).catch(() => {});
+  } catch(e) {}
+}
+
+async function refreshActivity() {
+  if (!sessionId) return;
+  try {
+    const data = await post('/api/activity', {sessionId});
+    if (data.activity) renderActivity(data.activity);
+  } catch(e) {}
+}
+
+// ---- Render ----
+let notifiedDeals = new Set();
+
+function renderBook(book) {
+  document.getElementById('buy-body').innerHTML = renderSide(book.buys, 'buy', book.sells);
+  document.getElementById('sell-body').innerHTML = renderSide(book.sells, 'sell', book.buys);
+  checkForDeals(book);
+}
+
+function renderSide(orders, type, oppositeOrders) {
+  if (!orders || orders.length === 0) return '<p class="empty-msg">No ' + type + ' orders yet</p>';
+
+  // Build a set of game titles the current user has on the OPPOSITE side
+  // e.g. if rendering sells, find games the user has buy orders for
+  const myOppositeGames = new Map();
+  if (oppositeOrders) {
+    for (const o of oppositeOrders) {
+      if (o.user.toLowerCase() === username.toLowerCase()) {
+        const key = o.title.toLowerCase();
+        const existing = myOppositeGames.get(key);
+        if (!existing) {
+          myOppositeGames.set(key, parseFloat(o.price));
+        } else {
+          // For user's buys, track highest bid; for user's sells, track lowest ask
+          if (type === 'sell') {
+            myOppositeGames.set(key, Math.max(existing, parseFloat(o.price)));
+          } else {
+            myOppositeGames.set(key, Math.min(existing, parseFloat(o.price)));
+          }
+        }
+      }
+    }
+  }
+
+  // Group orders by title (case-insensitive)
+  const groups = new Map();
+  for (const o of orders) {
+    const key = o.title.toLowerCase();
+    if (!groups.has(key)) groups.set(key, {title: o.title, orders: []});
+    groups.get(key).orders.push(o);
+  }
+
+  let html = '';
+  let groupIdx = 0;
+  for (const [key, group] of groups) {
+    const gid = type + '-g' + groupIdx;
+    const bestPrice = group.orders[0].price;
+    const count = group.orders.length;
+    const priceClass = type === 'buy' ? 'best-price-buy' : 'best-price-sell';
+
+    html += '<div class="game-group">';
+    html += '<div class="game-group-header" onclick="toggleGroup(\'' + gid + '\')">'
+      + '<span class="game-title">' + esc(group.title)
+      + ' <span class="count-badge">' + count + ' listing' + (count > 1 ? 's' : '') + '</span></span>'
+      + '<span class="game-meta">'
+      + '<span class="' + priceClass + '">' + (type === 'buy' ? 'Best: ' : 'From: ') + '&euro;' + esc(bestPrice) + '</span>'
+      + '<span class="chevron" id="chev-' + gid + '">&#9654;</span>'
+      + '</span></div>';
+
+    html += '<div class="game-group-listings" id="' + gid + '">';
+    for (const o of group.orders) {
+      const mine = o.user.toLowerCase() === username.toLowerCase();
+      html += '<div class="listing-row">';
+      html += '<span class="listing-price ' + type + '">&euro;' + esc(o.price) + '</span>';
+      html += '<span class="listing-owner">' + (mine ? '<span class="me">You</span>' : 'Other trader') + '</span>';
+      html += '<span class="listing-actions">';
+      if (mine) {
+        html += '<button class="btn-cancel-order" onclick="cancelOrder(\'' + esc(o.side) + '\',\'' + esc(o.title) + '\',\'' + esc(o.price) + '\')">Cancel</button>';
+      } else {
+        const tradeSide = type === 'buy' ? 'S' : 'B';
+        const tradeLabel = type === 'buy' ? 'Sell' : 'Buy';
+        // Check if this is a better deal for the user
+        const titleKey = o.title.toLowerCase();
+        const myPrice = myOppositeGames.get(titleKey);
+        let isDeal = false;
+        if (myPrice !== undefined) {
+          // Sell side: deal if sell price <= user's buy price
+          // Buy side: deal if buy price >= user's sell price
+          if (type === 'sell') isDeal = parseFloat(o.price) <= myPrice;
+          else isDeal = parseFloat(o.price) >= myPrice;
+        }
+        if (isDeal) {
+          html += '<button class="btn-deal" onclick="fillTrade(\'' + tradeSide + '\',\'' + esc(o.title) + '\',\'' + esc(o.price) + '\')">' 
+            + '<span class="star">&#9733;</span>'
+            + tradeLabel + ' &euro;' + esc(o.price) + '</button>';
+        } else {
+          html += '<button class="btn-trade" onclick="fillTrade(\'' + tradeSide + '\',\'' + esc(o.title) + '\',\'' + esc(o.price) + '\')">' 
+            + tradeLabel + ' &euro;' + esc(o.price) + '</button>';
+        }
+      }
+      html += '</span></div>';
+    }
+    html += '</div></div>';
+    groupIdx++;
+  }
+  return html;
+}
+
+function toggleGroup(gid) {
+  const el = document.getElementById(gid);
+  const chev = document.getElementById('chev-' + gid);
+  const open = el.classList.toggle('open');
+  if (chev) chev.classList.toggle('open', open);
+}
+
+function checkForDeals(book) {
+  if (!username) return;
+  const uname = username.toLowerCase();
+  // Find user's buy orders and check for cheaper sells
+  if (book.buys && book.sells) {
+    for (const buy of book.buys) {
+      if (buy.user.toLowerCase() !== uname) continue;
+      for (const sell of book.sells) {
+        if (sell.user.toLowerCase() === uname) continue;
+        if (sell.title.toLowerCase() === buy.title.toLowerCase() && parseFloat(sell.price) <= parseFloat(buy.price)) {
+          const dealKey = sell.title.toLowerCase() + '|' + sell.price;
+          if (!notifiedDeals.has(dealKey)) {
+            notifiedDeals.add(dealKey);
+            notify('deal', '&#9733; Better deal found! <strong>' + esc(sell.title) + '</strong> available at &euro;' + esc(sell.price) + ' (your bid: &euro;' + esc(buy.price) + ')');
+          }
+        }
+      }
+    }
+  }
+  // Find user's sell orders and check for higher buy offers
+  if (book.sells && book.buys) {
+    for (const sell of book.sells) {
+      if (sell.user.toLowerCase() !== uname) continue;
+      for (const buy of book.buys) {
+        if (buy.user.toLowerCase() === uname) continue;
+        if (buy.title.toLowerCase() === sell.title.toLowerCase() && parseFloat(buy.price) >= parseFloat(sell.price)) {
+          const dealKey = buy.title.toLowerCase() + '|B|' + buy.price;
+          if (!notifiedDeals.has(dealKey)) {
+            notifiedDeals.add(dealKey);
+            notify('deal', '&#9733; Better deal found! Someone wants <strong>' + esc(buy.title) + '</strong> at &euro;' + esc(buy.price) + ' (your ask: &euro;' + esc(sell.price) + ')');
+          }
+        }
+      }
+    }
+  }
+}
+
+function renderActivity(items) {
+  const el = document.getElementById('activity-list');
+  if (!items || items.length === 0) {
+    el.innerHTML = '<p class="activity-empty">No activity yet</p>';
+    return;
+  }
+  let html = '';
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    const isMatch = item.includes('MATCHED');
+    html += '<div class="activity-item' + (isMatch ? ' activity-match' : '') + '">' + esc(item) + '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function notify(type, msg) {
+  const div = document.getElementById('notifications');
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.innerHTML = msg;
+  div.prepend(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+// ---- Delete Account ----
+function showDeleteAccount() {
+  togglePanel();
+  document.getElementById('delete-password').value = '';
+  document.getElementById('delete-error').style.display = 'none';
+  document.getElementById('delete-modal').classList.add('open');
+  document.getElementById('delete-password').focus();
+}
+function closeDeleteModal() {
+  document.getElementById('delete-modal').classList.remove('open');
+}
+async function confirmDeleteAccount() {
+  const pw = document.getElementById('delete-password').value;
+  if (!pw) { document.getElementById('delete-error').textContent = 'Enter your password'; document.getElementById('delete-error').style.display = 'block'; return; }
+  try {
+    const data = await post('/api/delete-account', {sessionId, password: pw});
+    if (data.error) { document.getElementById('delete-error').textContent = data.error; document.getElementById('delete-error').style.display = 'block'; return; }
+    closeDeleteModal();
+    if (evtSource) evtSource.close();
+    sessionId = null; username = null;
+    document.getElementById('main-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('burger-btn').style.display = 'none';
+    document.getElementById('notifications').innerHTML = '';
+    document.getElementById('activity-list').innerHTML = '<p class="activity-empty">No activity yet</p>';
+    document.getElementById('side-panel').classList.remove('open');
+    document.getElementById('panel-overlay').classList.remove('open');
+    document.getElementById('burger-btn').classList.remove('open');
+    notify('info', 'Your account has been permanently deleted');
+  } catch(e) { document.getElementById('delete-error').textContent = 'Failed to connect'; document.getElementById('delete-error').style.display = 'block'; }
+}
+document.getElementById('delete-password').addEventListener('keydown', e => { if (e.key === 'Enter') confirmDeleteAccount(); if (e.key === 'Escape') closeDeleteModal(); });
+document.getElementById('delete-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeDeleteModal(); });
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
