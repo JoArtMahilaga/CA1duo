@@ -91,12 +91,12 @@ public class GameExchangeServer {
         GameExchangeServer server = new GameExchangeServer(port, poolSize);
         UserStore userStore = new UserStore("users.dat");
 
-//        try {
-//            new WebServer(httpPort, server.orderBook, userStore).start(); // Start the web server
-//        } catch (Exception e) {
-//            LOG.severe("[" + Thread.currentThread().getName() + "] Failed to start web server: " + e.getMessage());
-//
-//            server.start();
-//        }
+        try {
+            new WebServer(httpPort, server.orderBook, userStore).start(); // Start the web server
+        } catch (Exception e) {
+            LOG.severe("[" + Thread.currentThread().getName() + "] Failed to start web server: " + e.getMessage());
+
+            server.start();
+        }
     }
 }
